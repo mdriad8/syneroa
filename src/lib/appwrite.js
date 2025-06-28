@@ -26,7 +26,7 @@ export const COLLECTIONS = {
   CONTACT_MESSAGES: '685998e2001e54d1c99a',
   CAPSTONE_PROJECTS: '685a12e7001c6bfc1f35',
   IDEAS: '685a1853003068f88f92',
-  COURSES: 'courses' // Add this collection ID when created
+  COURSES: '685a2f4e001c8b9f2d1a' // Add actual collection ID when created
 };
 
 export { Query };

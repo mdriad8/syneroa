@@ -442,29 +442,44 @@ export const updateIdea = async (id, data) => {
 export const createCourse = async (data) => {
   return await databases.createDocument(
     DATABASE_ID,
-    COLLECTIONS.COURSES || 'courses',
+    COLLECTIONS.COURSES,
     ID.unique(),
     {
       ...data,
       students: 0,
+      rating: 0,
+      reviews: 0,
       createdAt: new Date().toISOString(),
       status: 'draft'
     }
   );
 };
 
-export const getCourses = async () => {
-  return await databases.listDocuments(
-    DATABASE_ID,
-    COLLECTIONS.COURSES || 'courses',
-    [Query.orderDesc('createdAt')]
-  );
+export const getCourses = async (publishedOnly = false) => {
+  if (publishedOnly) {
+    // Public can only see published courses
+    return await databases.listDocuments(
+      DATABASE_ID,
+      COLLECTIONS.COURSES,
+      [
+        Query.equal('status', 'published'),
+        Query.orderDesc('createdAt')
+      ]
+    );
+  } else {
+    // Admin can see all courses
+    return await databases.listDocuments(
+      DATABASE_ID,
+      COLLECTIONS.COURSES,
+      [Query.orderDesc('createdAt')]
+    );
+  }
 };
 
 export const getCourse = async (id) => {
   return await databases.getDocument(
     DATABASE_ID,
-    COLLECTIONS.COURSES || 'courses',
+    COLLECTIONS.COURSES,
     id
   );
 };
@@ -472,7 +487,7 @@ export const getCourse = async (id) => {
 export const updateCourse = async (id, data) => {
   return await databases.updateDocument(
     DATABASE_ID,
-    COLLECTIONS.COURSES || 'courses',
+    COLLECTIONS.COURSES,
     id,
     data
   );
@@ -481,7 +496,7 @@ export const updateCourse = async (id, data) => {
 export const deleteCourse = async (id) => {
   return await databases.deleteDocument(
     DATABASE_ID,
-    COLLECTIONS.COURSES || 'courses',
+    COLLECTIONS.COURSES,
     id
   );
 };
@@ -489,7 +504,7 @@ export const deleteCourse = async (id) => {
 export const publishCourse = async (id) => {
   return await databases.updateDocument(
     DATABASE_ID,
-    COLLECTIONS.COURSES || 'courses',
+    COLLECTIONS.COURSES,
     id,
     { status: 'published' }
   );
@@ -498,8 +513,27 @@ export const publishCourse = async (id) => {
 export const unpublishCourse = async (id) => {
   return await databases.updateDocument(
     DATABASE_ID,
-    COLLECTIONS.COURSES || 'courses',
+    COLLECTIONS.COURSES,
     id,
     { status: 'draft' }
+  );
+};
+
+export const enrollInCourse = async (courseId, userId) => {
+  // Get current course data
+  const course = await databases.getDocument(
+    DATABASE_ID,
+    COLLECTIONS.COURSES,
+    courseId
+  );
+  
+  // Update student count
+  return await databases.updateDocument(
+    DATABASE_ID,
+    COLLECTIONS.COURSES,
+    courseId,
+    {
+      students: (course.students || 0) + 1
+    }
   );
 };

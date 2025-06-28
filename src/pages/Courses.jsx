@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   BookOpen,
@@ -9,120 +9,51 @@ import {
   Search,
   Play,
   ShoppingCart,
+  DollarSign,
+  Award,
 } from "lucide-react";
 import Button from "../components/UI/Button";
 import Card from "../components/UI/Card";
 import { useAuth } from "../contexts/AuthContext";
+import { getCourses, enrollInCourse } from "../services/database";
 import toast from "react-hot-toast";
 
 const Courses = () => {
   const { user } = useAuth();
+  const [courses, setCourses] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [searchTerm, setSearchTerm] = useState("");
+  const [enrolling, setEnrolling] = useState({});
 
   const categories = [
     "All",
     "AI & Machine Learning",
-    "Web Development",
+    "Web Development", 
     "Data Science",
     "Mobile Development",
     "Cybersecurity",
     "Cloud Computing",
     "Blockchain",
+    "General",
   ];
 
-  const courses = [
-    {
-      id: 1,
-      title: "Complete AI & Machine Learning Bootcamp",
-      instructor: "Dr. Sarah Chen",
-      category: "AI & Machine Learning",
-      price: 199,
-      originalPrice: 299,
-      rating: 4.8,
-      students: 12500,
-      duration: "40 hours",
-      level: "Beginner to Advanced",
-      image: "https://images.pexels.com/photos/8386440/pexels-photo-8386440.jpeg?auto=compress&cs=tinysrgb&w=400",
-      description: "Master AI and ML from scratch with hands-on projects and real-world applications.",
-      features: ["40+ hours of content", "10 real projects", "Certificate of completion", "Lifetime access"],
-    },
-    {
-      id: 2,
-      title: "Full Stack Web Development Masterclass",
-      instructor: "Prof. Michael Rodriguez",
-      category: "Web Development",
-      price: 149,
-      originalPrice: 249,
-      rating: 4.9,
-      students: 18200,
-      duration: "60 hours",
-      level: "Beginner",
-      image: "https://images.pexels.com/photos/11035380/pexels-photo-11035380.jpeg?auto=compress&cs=tinysrgb&w=400",
-      description: "Build modern web applications with React, Node.js, and MongoDB.",
-      features: ["60+ hours of content", "15 projects", "Job placement assistance", "1-on-1 mentoring"],
-    },
-    {
-      id: 3,
-      title: "Data Science & Analytics Professional",
-      instructor: "Dr. Emily Watson",
-      category: "Data Science",
-      price: 179,
-      originalPrice: 279,
-      rating: 4.7,
-      students: 9800,
-      duration: "45 hours",
-      level: "Intermediate",
-      image: "https://images.pexels.com/photos/590022/pexels-photo-590022.jpeg?auto=compress&cs=tinysrgb&w=400",
-      description: "Learn data analysis, visualization, and machine learning with Python and R.",
-      features: ["45+ hours of content", "Real datasets", "Industry projects", "Career guidance"],
-    },
-    {
-      id: 4,
-      title: "Mobile App Development with React Native",
-      instructor: "James Thompson",
-      category: "Mobile Development",
-      price: 129,
-      originalPrice: 199,
-      rating: 4.6,
-      students: 7500,
-      duration: "35 hours",
-      level: "Intermediate",
-      image: "https://images.pexels.com/photos/147413/twitter-facebook-together-exchange-of-information-147413.jpeg?auto=compress&cs=tinysrgb&w=400",
-      description: "Build cross-platform mobile apps for iOS and Android using React Native.",
-      features: ["35+ hours of content", "5 complete apps", "App store deployment", "Code reviews"],
-    },
-    {
-      id: 5,
-      title: "Cybersecurity Fundamentals & Ethical Hacking",
-      instructor: "Dr. Alex Kumar",
-      category: "Cybersecurity",
-      price: 159,
-      originalPrice: 229,
-      rating: 4.8,
-      students: 6200,
-      duration: "50 hours",
-      level: "Beginner to Intermediate",
-      image: "https://images.pexels.com/photos/60504/security-protection-anti-virus-software-60504.jpeg?auto=compress&cs=tinysrgb&w=400",
-      description: "Learn cybersecurity principles, ethical hacking, and penetration testing.",
-      features: ["50+ hours of content", "Hands-on labs", "Security certifications prep", "Industry tools"],
-    },
-    {
-      id: 6,
-      title: "Cloud Computing with AWS & Azure",
-      instructor: "Maria Garcia",
-      category: "Cloud Computing",
-      price: 189,
-      originalPrice: 289,
-      rating: 4.7,
-      students: 8900,
-      duration: "55 hours",
-      level: "Intermediate to Advanced",
-      image: "https://images.pexels.com/photos/1181675/pexels-photo-1181675.jpeg?auto=compress&cs=tinysrgb&w=400",
-      description: "Master cloud platforms with AWS and Azure for scalable applications.",
-      features: ["55+ hours of content", "Cloud projects", "AWS/Azure credits", "Certification prep"],
-    },
-  ];
+  useEffect(() => {
+    loadCourses();
+  }, []);
+
+  const loadCourses = async () => {
+    setLoading(true);
+    try {
+      const response = await getCourses(true); // Only get published courses for public view
+      setCourses(response.documents || []);
+    } catch (error) {
+      console.error("Failed to load courses:", error);
+      toast.error("Failed to load courses");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredCourses = courses.filter((course) => {
     const matchesCategory = selectedCategory === "All" || course.category === selectedCategory;
@@ -131,12 +62,25 @@ const Courses = () => {
     return matchesCategory && matchesSearch;
   });
 
-  const handleEnroll = (course) => {
+  const handleEnroll = async (course) => {
     if (!user) {
       toast.error("Please login to enroll in courses");
       return;
     }
-    toast.success(`Successfully enrolled in ${course.title}!`);
+
+    setEnrolling(prev => ({ ...prev, [course.$id]: true }));
+    
+    try {
+      await enrollInCourse(course.$id, user.$id);
+      toast.success(`Successfully enrolled in ${course.title}!`);
+      // Reload courses to update student count
+      await loadCourses();
+    } catch (error) {
+      console.error("Enrollment failed:", error);
+      toast.error("Failed to enroll in course");
+    } finally {
+      setEnrolling(prev => ({ ...prev, [course.$id]: false }));
+    }
   };
 
   const handleAddToCart = (course) => {
@@ -146,6 +90,17 @@ const Courses = () => {
     }
     toast.success(`${course.title} added to cart!`);
   };
+
+  if (loading) {
+    return (
+      <div className="pt-16 min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Loading courses...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="pt-16">
@@ -221,17 +176,19 @@ const Courses = () => {
             <div className="text-center py-12">
               <BookOpen className="h-16 w-16 text-gray-400 mx-auto mb-4" />
               <h3 className="text-xl font-semibold text-gray-600 mb-2">
-                No courses found
+                {courses.length === 0 ? "No courses available yet" : "No courses found"}
               </h3>
               <p className="text-gray-500">
-                Try adjusting your search or filter criteria.
+                {courses.length === 0 
+                  ? "Check back soon for new courses!" 
+                  : "Try adjusting your search or filter criteria."}
               </p>
             </div>
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
               {filteredCourses.map((course, index) => (
                 <motion.div
-                  key={course.id}
+                  key={course.$id}
                   initial={{ opacity: 0, y: 30 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: index * 0.1 }}
@@ -239,26 +196,35 @@ const Courses = () => {
                   <Card hover className="overflow-hidden h-full flex flex-col">
                     <div className="relative">
                       <img
-                        src={course.image}
+                        src={course.image || "https://images.pexels.com/photos/3184291/pexels-photo-3184291.jpeg?auto=compress&cs=tinysrgb&w=400"}
                         alt={course.title}
                         className="w-full h-48 object-cover"
                       />
                       <div className="absolute top-4 left-4">
                         <span className="bg-teal-600 text-white px-2 py-1 rounded text-sm font-medium">
-                          {course.level}
+                          {course.level || "All Levels"}
                         </span>
                       </div>
-                      <div className="absolute top-4 right-4">
-                        <span className="bg-red-500 text-white px-2 py-1 rounded text-sm font-medium">
-                          {Math.round(((course.originalPrice - course.price) / course.originalPrice) * 100)}% OFF
-                        </span>
-                      </div>
+                      {course.price > 0 && (
+                        <div className="absolute top-4 right-4">
+                          <span className="bg-green-500 text-white px-2 py-1 rounded text-sm font-medium">
+                            ${course.price}
+                          </span>
+                        </div>
+                      )}
+                      {course.price === 0 && (
+                        <div className="absolute top-4 right-4">
+                          <span className="bg-blue-500 text-white px-2 py-1 rounded text-sm font-medium">
+                            FREE
+                          </span>
+                        </div>
+                      )}
                     </div>
                     
                     <div className="p-6 flex-1 flex flex-col">
                       <div className="flex items-center gap-2 mb-2">
                         <span className="text-sm text-teal-600 font-medium">
-                          {course.category}
+                          {course.category || "General"}
                         </span>
                       </div>
                       
@@ -267,37 +233,40 @@ const Courses = () => {
                       </h3>
                       
                       <p className="text-gray-600 text-sm mb-3">
-                        by {course.instructor}
+                        by {course.instructor || "Instructor"}
                       </p>
                       
                       <p className="text-gray-600 text-sm mb-4 flex-1">
-                        {course.description}
+                        {course.description || "Course description not available"}
                       </p>
                       
                       <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
                         <div className="flex items-center gap-1">
                           <Star className="h-4 w-4 text-yellow-500 fill-current" />
-                          <span>{course.rating}</span>
+                          <span>{course.rating || "New"}</span>
                         </div>
                         <div className="flex items-center gap-1">
                           <Users className="h-4 w-4" />
-                          <span>{course.students.toLocaleString()}</span>
+                          <span>{course.students || 0}</span>
                         </div>
                         <div className="flex items-center gap-1">
                           <Clock className="h-4 w-4" />
-                          <span>{course.duration}</span>
+                          <span>{course.duration || "Self-paced"}</span>
                         </div>
                       </div>
                       
                       <div className="border-t pt-4">
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center gap-2">
-                            <span className="text-2xl font-bold text-slate-900">
-                              ${course.price}
-                            </span>
-                            <span className="text-sm text-gray-500 line-through">
-                              ${course.originalPrice}
-                            </span>
+                            {course.price > 0 ? (
+                              <span className="text-2xl font-bold text-slate-900">
+                                ${course.price}
+                              </span>
+                            ) : (
+                              <span className="text-2xl font-bold text-green-600">
+                                FREE
+                              </span>
+                            )}
                           </div>
                         </div>
                         
@@ -306,17 +275,21 @@ const Courses = () => {
                             onClick={() => handleEnroll(course)}
                             className="flex-1"
                             size="sm"
+                            loading={enrolling[course.$id]}
+                            disabled={enrolling[course.$id]}
                           >
                             <Play className="h-4 w-4 mr-2" />
-                            Enroll Now
+                            {course.price > 0 ? "Enroll Now" : "Start Learning"}
                           </Button>
-                          <Button
-                            onClick={() => handleAddToCart(course)}
-                            variant="outline"
-                            size="sm"
-                          >
-                            <ShoppingCart className="h-4 w-4" />
-                          </Button>
+                          {course.price > 0 && (
+                            <Button
+                              onClick={() => handleAddToCart(course)}
+                              variant="outline"
+                              size="sm"
+                            >
+                              <ShoppingCart className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -325,6 +298,38 @@ const Courses = () => {
               ))}
             </div>
           )}
+        </div>
+      </section>
+
+      {/* Stats Section */}
+      <section className="py-16 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+            <div>
+              <div className="text-3xl font-bold text-teal-600 mb-2">
+                {courses.length}+
+              </div>
+              <div className="text-gray-600">Expert Courses</div>
+            </div>
+            <div>
+              <div className="text-3xl font-bold text-teal-600 mb-2">
+                {courses.reduce((total, course) => total + (course.students || 0), 0)}+
+              </div>
+              <div className="text-gray-600">Students Enrolled</div>
+            </div>
+            <div>
+              <div className="text-3xl font-bold text-teal-600 mb-2">
+                {courses.filter(course => course.price === 0).length}+
+              </div>
+              <div className="text-gray-600">Free Courses</div>
+            </div>
+            <div>
+              <div className="text-3xl font-bold text-teal-600 mb-2">
+                {new Set(courses.map(course => course.category)).size}+
+              </div>
+              <div className="text-gray-600">Categories</div>
+            </div>
+          </div>
         </div>
       </section>
 
