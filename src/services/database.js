@@ -519,21 +519,130 @@ export const unpublishCourse = async (id) => {
   );
 };
 
-export const enrollInCourse = async (courseId, userId) => {
-  // Get current course data
-  const course = await databases.getDocument(
+// Enrollments
+export const createEnrollment = async (data) => {
+  return await databases.createDocument(
     DATABASE_ID,
-    COLLECTIONS.COURSES,
-    courseId
-  );
-  
-  // Update student count
-  return await databases.updateDocument(
-    DATABASE_ID,
-    COLLECTIONS.COURSES,
-    courseId,
+    COLLECTIONS.ENROLLMENTS,
+    ID.unique(),
     {
-      students: (course.students || 0) + 1
+      ...data,
+      enrolledAt: new Date().toISOString(),
+      progress: 0,
+      status: 'active'
     }
   );
+};
+
+export const getUserEnrollments = async (userId) => {
+  return await databases.listDocuments(
+    DATABASE_ID,
+    COLLECTIONS.ENROLLMENTS,
+    [
+      Query.equal('userId', userId),
+      Query.orderDesc('enrolledAt')
+    ]
+  );
+};
+
+export const checkEnrollment = async (userId, courseId) => {
+  try {
+    const result = await databases.listDocuments(
+      DATABASE_ID,
+      COLLECTIONS.ENROLLMENTS,
+      [
+        Query.equal('userId', userId),
+        Query.equal('courseId', courseId)
+      ]
+    );
+    return result.documents.length > 0 ? result.documents[0] : null;
+  } catch (error) {
+    return null;
+  }
+};
+
+export const updateEnrollmentProgress = async (enrollmentId, progress) => {
+  return await databases.updateDocument(
+    DATABASE_ID,
+    COLLECTIONS.ENROLLMENTS,
+    enrollmentId,
+    { progress }
+  );
+};
+
+// Payments
+export const createPayment = async (data) => {
+  return await databases.createDocument(
+    DATABASE_ID,
+    COLLECTIONS.PAYMENTS,
+    ID.unique(),
+    {
+      ...data,
+      createdAt: new Date().toISOString()
+    }
+  );
+};
+
+export const getPaymentByStripeId = async (stripePaymentId) => {
+  try {
+    const result = await databases.listDocuments(
+      DATABASE_ID,
+      COLLECTIONS.PAYMENTS,
+      [Query.equal('stripePaymentId', stripePaymentId)]
+    );
+    return result.documents.length > 0 ? result.documents[0] : null;
+  } catch (error) {
+    return null;
+  }
+};
+
+export const updatePaymentStatus = async (paymentId, status) => {
+  return await databases.updateDocument(
+    DATABASE_ID,
+    COLLECTIONS.PAYMENTS,
+    paymentId,
+    { status }
+  );
+};
+
+// Combined enrollment with course update
+export const enrollInCourse = async (courseId, userId, paymentData = null) => {
+  try {
+    // Check if already enrolled
+    const existingEnrollment = await checkEnrollment(userId, courseId);
+    if (existingEnrollment) {
+      throw new Error('Already enrolled in this course');
+    }
+
+    // Create enrollment
+    const enrollment = await createEnrollment({
+      userId,
+      courseId,
+      paymentId: paymentData?.paymentId || null
+    });
+
+    // Update course student count
+    const course = await getCourse(courseId);
+    await updateCourse(courseId, {
+      students: (course.students || 0) + 1
+    });
+
+    // Create payment record if payment was made
+    if (paymentData) {
+      await createPayment({
+        userId,
+        courseId,
+        enrollmentId: enrollment.$id,
+        amount: paymentData.amount,
+        currency: paymentData.currency,
+        stripePaymentId: paymentData.stripePaymentId,
+        status: paymentData.status
+      });
+    }
+
+    return enrollment;
+  } catch (error) {
+    console.error('Enrollment error:', error);
+    throw error;
+  }
 };

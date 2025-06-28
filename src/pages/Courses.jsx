@@ -11,11 +11,13 @@ import {
   ShoppingCart,
   DollarSign,
   Award,
+  CheckCircle,
 } from "lucide-react";
 import Button from "../components/UI/Button";
 import Card from "../components/UI/Card";
+import PaymentModal from "../components/PaymentModal";
 import { useAuth } from "../contexts/AuthContext";
-import { getCourses, enrollInCourse } from "../services/database";
+import { getCourses, checkEnrollment } from "../services/database";
 import toast from "react-hot-toast";
 
 const Courses = () => {
@@ -24,7 +26,9 @@ const Courses = () => {
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [searchTerm, setSearchTerm] = useState("");
-  const [enrolling, setEnrolling] = useState({});
+  const [enrollments, setEnrollments] = useState({});
+  const [selectedCourse, setSelectedCourse] = useState(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   const categories = [
     "All",
@@ -42,6 +46,12 @@ const Courses = () => {
     loadCourses();
   }, []);
 
+  useEffect(() => {
+    if (user && courses.length > 0) {
+      checkUserEnrollments();
+    }
+  }, [user, courses]);
+
   const loadCourses = async () => {
     setLoading(true);
     try {
@@ -55,6 +65,21 @@ const Courses = () => {
     }
   };
 
+  const checkUserEnrollments = async () => {
+    if (!user) return;
+    
+    const enrollmentChecks = {};
+    for (const course of courses) {
+      try {
+        const enrollment = await checkEnrollment(user.$id, course.$id);
+        enrollmentChecks[course.$id] = enrollment;
+      } catch (error) {
+        console.error(`Failed to check enrollment for course ${course.$id}:`, error);
+      }
+    }
+    setEnrollments(enrollmentChecks);
+  };
+
   const filteredCourses = courses.filter((course) => {
     const matchesCategory = selectedCategory === "All" || course.category === selectedCategory;
     const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -62,33 +87,32 @@ const Courses = () => {
     return matchesCategory && matchesSearch;
   });
 
-  const handleEnroll = async (course) => {
+  const handleEnrollClick = (course) => {
     if (!user) {
       toast.error("Please login to enroll in courses");
       return;
     }
 
-    setEnrolling(prev => ({ ...prev, [course.$id]: true }));
-    
-    try {
-      await enrollInCourse(course.$id, user.$id);
-      toast.success(`Successfully enrolled in ${course.title}!`);
-      // Reload courses to update student count
-      await loadCourses();
-    } catch (error) {
-      console.error("Enrollment failed:", error);
-      toast.error("Failed to enroll in course");
-    } finally {
-      setEnrolling(prev => ({ ...prev, [course.$id]: false }));
+    // Check if already enrolled
+    if (enrollments[course.$id]) {
+      toast.info("You are already enrolled in this course");
+      return;
+    }
+
+    setSelectedCourse(course);
+    setShowPaymentModal(true);
+  };
+
+  const handleEnrollmentSuccess = () => {
+    // Reload courses and enrollments
+    loadCourses();
+    if (user) {
+      checkUserEnrollments();
     }
   };
 
-  const handleAddToCart = (course) => {
-    if (!user) {
-      toast.error("Please login to add courses to cart");
-      return;
-    }
-    toast.success(`${course.title} added to cart!`);
+  const isEnrolled = (courseId) => {
+    return enrollments[courseId] !== undefined && enrollments[courseId] !== null;
   };
 
   if (loading) {
@@ -219,6 +243,14 @@ const Courses = () => {
                           </span>
                         </div>
                       )}
+                      {isEnrolled(course.$id) && (
+                        <div className="absolute bottom-4 right-4">
+                          <span className="bg-green-600 text-white px-2 py-1 rounded-full text-xs font-medium flex items-center">
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                            Enrolled
+                          </span>
+                        </div>
+                      )}
                     </div>
                     
                     <div className="p-6 flex-1 flex flex-col">
@@ -271,23 +303,23 @@ const Courses = () => {
                         </div>
                         
                         <div className="flex gap-2">
-                          <Button
-                            onClick={() => handleEnroll(course)}
-                            className="flex-1"
-                            size="sm"
-                            loading={enrolling[course.$id]}
-                            disabled={enrolling[course.$id]}
-                          >
-                            <Play className="h-4 w-4 mr-2" />
-                            {course.price > 0 ? "Enroll Now" : "Start Learning"}
-                          </Button>
-                          {course.price > 0 && (
+                          {isEnrolled(course.$id) ? (
                             <Button
-                              onClick={() => handleAddToCart(course)}
+                              className="flex-1"
+                              size="sm"
                               variant="outline"
+                            >
+                              <Play className="h-4 w-4 mr-2" />
+                              Continue Learning
+                            </Button>
+                          ) : (
+                            <Button
+                              onClick={() => handleEnrollClick(course)}
+                              className="flex-1"
                               size="sm"
                             >
-                              <ShoppingCart className="h-4 w-4" />
+                              <Play className="h-4 w-4 mr-2" />
+                              {course.price > 0 ? "Purchase Course" : "Start Learning"}
                             </Button>
                           )}
                         </div>
@@ -362,6 +394,14 @@ const Courses = () => {
           </motion.div>
         </div>
       </section>
+
+      {/* Payment Modal */}
+      <PaymentModal
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        course={selectedCourse}
+        onSuccess={handleEnrollmentSuccess}
+      />
     </div>
   );
 };

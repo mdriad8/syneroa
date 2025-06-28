@@ -11,78 +11,87 @@ import {
   Play,
   CheckCircle,
   Award,
+  DollarSign,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import Button from "../components/UI/Button";
 import Card from "../components/UI/Card";
 import { Link } from "react-router-dom";
+import { getUserEnrollments, getCourse } from "../services/database";
 
 const Dashboard = () => {
   const { user } = useAuth();
   const [enrolledCourses, setEnrolledCourses] = useState([]);
   const [recentActivity, setRecentActivity] = useState([]);
   const [achievements, setAchievements] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock data - replace with actual API calls
   useEffect(() => {
-    setEnrolledCourses([
-      {
-        id: 1,
-        title: "AI & Machine Learning Fundamentals",
-        progress: 65,
-        instructor: "Dr. Sarah Chen",
-        nextLesson: "Neural Networks Basics",
-        duration: "2h 30m",
-        image: "https://images.pexels.com/photos/8386440/pexels-photo-8386440.jpeg?auto=compress&cs=tinysrgb&w=400",
-      },
-      {
-        id: 2,
-        title: "Sustainable Technology Solutions",
-        progress: 40,
-        instructor: "Prof. Michael Green",
-        nextLesson: "Renewable Energy Systems",
-        duration: "1h 45m",
-        image: "https://images.pexels.com/photos/9875414/pexels-photo-9875414.jpeg?auto=compress&cs=tinysrgb&w=400",
-      },
-      {
-        id: 3,
-        title: "Innovation & Entrepreneurship",
-        progress: 80,
-        instructor: "Dr. Emily Rodriguez",
-        nextLesson: "Business Model Canvas",
-        duration: "3h 15m",
-        image: "https://images.pexels.com/photos/3184465/pexels-photo-3184465.jpeg?auto=compress&cs=tinysrgb&w=400",
-      },
-    ]);
+    if (user) {
+      loadUserData();
+    }
+  }, [user]);
 
-    setRecentActivity([
-      {
-        type: "course_completed",
-        title: "Completed: Introduction to Data Science",
-        time: "2 hours ago",
-        icon: CheckCircle,
-      },
-      {
-        type: "challenge_joined",
-        title: "Joined: Climate Tech Innovation Challenge",
-        time: "1 day ago",
-        icon: Trophy,
-      },
-      {
-        type: "certificate_earned",
-        title: "Earned: Web Development Certificate",
-        time: "3 days ago",
-        icon: Award,
-      },
-    ]);
+  const loadUserData = async () => {
+    setLoading(true);
+    try {
+      // Load user enrollments
+      const enrollmentsResponse = await getUserEnrollments(user.$id);
+      const enrollments = enrollmentsResponse.documents || [];
 
-    setAchievements([
-      { name: "First Course Completed", earned: true },
-      { name: "Challenge Winner", earned: true },
-      { name: "Community Contributor", earned: false },
-      { name: "Innovation Leader", earned: false },
-    ]);
-  }, []);
+      // Load course details for each enrollment
+      const coursesWithDetails = await Promise.all(
+        enrollments.map(async (enrollment) => {
+          try {
+            const course = await getCourse(enrollment.courseId);
+            return {
+              ...course,
+              enrollment,
+              progress: enrollment.progress || 0,
+            };
+          } catch (error) {
+            console.error(`Failed to load course ${enrollment.courseId}:`, error);
+            return null;
+          }
+        })
+      );
+
+      setEnrolledCourses(coursesWithDetails.filter(course => course !== null));
+
+      // Mock recent activity - replace with actual data
+      setRecentActivity([
+        {
+          type: "course_enrolled",
+          title: `Enrolled in: ${coursesWithDetails[0]?.title || 'New Course'}`,
+          time: "2 hours ago",
+          icon: CheckCircle,
+        },
+        {
+          type: "challenge_joined",
+          title: "Joined: Climate Tech Innovation Challenge",
+          time: "1 day ago",
+          icon: Trophy,
+        },
+        {
+          type: "certificate_earned",
+          title: "Earned: Web Development Certificate",
+          time: "3 days ago",
+          icon: Award,
+        },
+      ]);
+
+      setAchievements([
+        { name: "First Course Enrolled", earned: enrollments.length > 0 },
+        { name: "Course Completed", earned: enrollments.some(e => e.progress >= 100) },
+        { name: "Community Contributor", earned: false },
+        { name: "Innovation Leader", earned: false },
+      ]);
+    } catch (error) {
+      console.error("Failed to load user data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const stats = [
     {
@@ -99,17 +108,31 @@ const Dashboard = () => {
     },
     {
       label: "Certificates Earned",
-      value: "3",
+      value: enrolledCourses.filter(c => c.progress >= 100).length.toString(),
       icon: Award,
       color: "bg-purple-500",
     },
     {
       label: "Study Hours",
-      value: "42",
+      value: Math.round(enrolledCourses.reduce((total, course) => {
+        const duration = parseFloat(course.duration?.replace(/[^\d.]/g, '') || '0');
+        return total + (duration * (course.progress / 100));
+      }, 0)).toString(),
       icon: Clock,
       color: "bg-orange-500",
     },
   ];
+
+  if (loading) {
+    return (
+      <div className="pt-16 min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Loading your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="pt-16 min-h-screen bg-gray-50">
@@ -178,45 +201,67 @@ const Dashboard = () => {
                 </Link>
               </div>
 
-              <div className="space-y-4">
-                {enrolledCourses.map((course) => (
-                  <Card key={course.id} hover className="p-6">
-                    <div className="flex items-center gap-4">
-                      <img
-                        src={course.image}
-                        alt={course.title}
-                        className="w-16 h-16 rounded-lg object-cover"
-                      />
-                      <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-slate-900 mb-1">
-                          {course.title}
-                        </h3>
-                        <p className="text-gray-600 text-sm mb-2">
-                          by {course.instructor}
-                        </p>
-                        <div className="flex items-center gap-4 mb-3">
-                          <div className="flex-1 bg-gray-200 rounded-full h-2">
-                            <div
-                              className="bg-teal-600 h-2 rounded-full"
-                              style={{ width: `${course.progress}%` }}
-                            />
+              {enrolledCourses.length === 0 ? (
+                <Card className="p-8 text-center">
+                  <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-600 mb-2">
+                    No courses enrolled yet
+                  </h3>
+                  <p className="text-gray-500 mb-4">
+                    Start your learning journey by enrolling in a course
+                  </p>
+                  <Link to="/courses">
+                    <Button>Browse Courses</Button>
+                  </Link>
+                </Card>
+              ) : (
+                <div className="space-y-4">
+                  {enrolledCourses.slice(0, 3).map((course) => (
+                    <Card key={course.$id} hover className="p-6">
+                      <div className="flex items-center gap-4">
+                        <img
+                          src={course.image || "https://images.pexels.com/photos/3184291/pexels-photo-3184291.jpeg?auto=compress&cs=tinysrgb&w=400"}
+                          alt={course.title}
+                          className="w-16 h-16 rounded-lg object-cover"
+                        />
+                        <div className="flex-1">
+                          <h3 className="text-lg font-semibold text-slate-900 mb-1">
+                            {course.title}
+                          </h3>
+                          <p className="text-gray-600 text-sm mb-2">
+                            by {course.instructor}
+                          </p>
+                          <div className="flex items-center gap-4 mb-3">
+                            <div className="flex-1 bg-gray-200 rounded-full h-2">
+                              <div
+                                className="bg-teal-600 h-2 rounded-full"
+                                style={{ width: `${course.progress}%` }}
+                              />
+                            </div>
+                            <span className="text-sm text-gray-600">
+                              {course.progress}%
+                            </span>
                           </div>
-                          <span className="text-sm text-gray-600">
-                            {course.progress}%
-                          </span>
+                          <div className="flex items-center gap-4 text-sm text-gray-500">
+                            <span>{course.duration}</span>
+                            <span>{course.level}</span>
+                            {course.price > 0 && (
+                              <span className="flex items-center gap-1">
+                                <DollarSign className="h-3 w-3" />
+                                Paid Course
+                              </span>
+                            )}
+                          </div>
                         </div>
-                        <p className="text-sm text-gray-600">
-                          Next: {course.nextLesson} • {course.duration}
-                        </p>
+                        <Button size="sm">
+                          <Play className="h-4 w-4 mr-2" />
+                          Continue
+                        </Button>
                       </div>
-                      <Button size="sm">
-                        <Play className="h-4 w-4 mr-2" />
-                        Continue
-                      </Button>
-                    </div>
-                  </Card>
-                ))}
-              </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </motion.div>
 
             {/* Quick Actions */}
@@ -332,38 +377,56 @@ const Dashboard = () => {
               </Card>
             </motion.div>
 
-            {/* Upcoming Events */}
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6, delay: 0.6 }}
-            >
-              <Card className="p-6">
-                <h3 className="text-lg font-semibold text-slate-900 mb-4">
-                  Upcoming Events
-                </h3>
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <Calendar className="h-5 w-5 text-teal-600" />
-                    <div>
-                      <p className="text-sm font-medium text-slate-900">
-                        AI Workshop
-                      </p>
-                      <p className="text-xs text-gray-500">Tomorrow, 2:00 PM</p>
+            {/* Course Progress Summary */}
+            {enrolledCourses.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, delay: 0.6 }}
+              >
+                <Card className="p-6">
+                  <h3 className="text-lg font-semibold text-slate-900 mb-4">
+                    Learning Progress
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Overall Progress</span>
+                      <span className="font-medium">
+                        {Math.round(
+                          enrolledCourses.reduce((total, course) => total + course.progress, 0) / 
+                          enrolledCourses.length
+                        )}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-teal-600 h-2 rounded-full"
+                        style={{
+                          width: `${Math.round(
+                            enrolledCourses.reduce((total, course) => total + course.progress, 0) / 
+                            enrolledCourses.length
+                          )}%`
+                        }}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-gray-600">Completed:</span>
+                        <span className="ml-1 font-medium">
+                          {enrolledCourses.filter(c => c.progress >= 100).length}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">In Progress:</span>
+                        <span className="ml-1 font-medium">
+                          {enrolledCourses.filter(c => c.progress > 0 && c.progress < 100).length}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <Users className="h-5 w-5 text-teal-600" />
-                    <div>
-                      <p className="text-sm font-medium text-slate-900">
-                        Study Group
-                      </p>
-                      <p className="text-xs text-gray-500">Friday, 4:00 PM</p>
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            </motion.div>
+                </Card>
+              </motion.div>
+            )}
           </div>
         </div>
       </div>
