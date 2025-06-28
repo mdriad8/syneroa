@@ -20,6 +20,7 @@ import SolutionModal from "../components/SolutionModal";
 import CapstoneProjectDetailsModal from "../components/CapstoneProjectDetailsModal";
 import ProblemSubmissionModal from "../components/ProblemSubmissionModal";
 import SolutionDetailsModal from "../components/SolutionDetailsModal";
+import { useAuth } from "../contexts/AuthContext";
 
 import {
   upvoteProblem,
@@ -31,6 +32,7 @@ import {
 import toast from "react-hot-toast";
 
 const Platform = () => {
+  const { isAdmin } = useAuth();
   const [activeTab, setActiveTab] = useState("challenges");
   const [showSolutionModal, setShowSolutionModal] = useState(false);
   const [showChallengeDetailsModal, setShowChallengeDetailsModal] =
@@ -62,7 +64,7 @@ const Platform = () => {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [isAdmin]);
 
   const loadData = async (retryCount = 0) => {
     const maxRetries = 2;
@@ -79,7 +81,7 @@ const Platform = () => {
               : res.documents || res.data?.documents || [];
             return data;
           }),
-          getSolutions().then((res) => {
+          getSolutions(isAdmin).then((res) => { // Pass admin flag to get appropriate solutions
             if (!res || typeof res !== "object")
               throw new Error("Invalid solutions response");
             const data = Array.isArray(res)
@@ -299,6 +301,7 @@ const Platform = () => {
           </h2>
           <p className="text-gray-600">
             Browse Real Micro-Tools Solving Real Problems
+            {!isAdmin && " (Approved Solutions Only)"}
           </p>
         </div>
         <div className="flex gap-2">
@@ -327,7 +330,11 @@ const Platform = () => {
         </div>
       ) : solutions.length === 0 ? (
         <div className="text-center py-8">
-          <p className="text-gray-600">No solutions available at the moment.</p>
+          <p className="text-gray-600">
+            {isAdmin 
+              ? "No solutions available at the moment." 
+              : "No approved solutions available at the moment."}
+          </p>
         </div>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -347,6 +354,17 @@ const Platform = () => {
                     <span className="px-2 py-1 bg-teal-100 text-teal-800 rounded text-sm font-medium">
                       {solution.category || "Uncategorized"}
                     </span>
+                    {isAdmin && (
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${
+                        solution.status === 'approved' 
+                          ? 'bg-green-100 text-green-800'
+                          : solution.status === 'rejected'
+                          ? 'bg-red-100 text-red-800'
+                          : 'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {solution.status}
+                      </span>
+                    )}
                   </div>
                   <h3 className="text-lg font-semibold text-slate-900 mb-2">
                     {solution.title || "Untitled Solution"}

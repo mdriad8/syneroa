@@ -23,6 +23,23 @@ export const getPartnerApplications = async () => {
   );
 };
 
+export const updatePartnerApplication = async (id, data) => {
+  return await databases.updateDocument(
+    DATABASE_ID,
+    COLLECTIONS.PARTNERS,
+    id,
+    data
+  );
+};
+
+export const deletePartnerApplication = async (id) => {
+  return await databases.deleteDocument(
+    DATABASE_ID,
+    COLLECTIONS.PARTNERS,
+    id
+  );
+};
+
 // Contact Messages
 export const createContactMessage = async (data) => {
   return await databases.createDocument(
@@ -42,6 +59,23 @@ export const getContactMessages = async () => {
     DATABASE_ID,
     COLLECTIONS.CONTACT_MESSAGES,
     [Query.orderDesc('createdAt')]
+  );
+};
+
+export const updateContactMessage = async (id, data) => {
+  return await databases.updateDocument(
+    DATABASE_ID,
+    COLLECTIONS.CONTACT_MESSAGES,
+    id,
+    data
+  );
+};
+
+export const deleteContactMessage = async (id) => {
+  return await databases.deleteDocument(
+    DATABASE_ID,
+    COLLECTIONS.CONTACT_MESSAGES,
+    id
   );
 };
 
@@ -98,12 +132,25 @@ export const createSolution = async (data) => {
   );
 };
 
-export const getSolutions = async () => {
-  return await databases.listDocuments(
-    DATABASE_ID,
-    COLLECTIONS.SOLUTIONS,
-    [Query.orderDesc('createdAt')]
-  );
+export const getSolutions = async (adminView = false) => {
+  if (adminView) {
+    // Admin can see all solutions
+    return await databases.listDocuments(
+      DATABASE_ID,
+      COLLECTIONS.SOLUTIONS,
+      [Query.orderDesc('createdAt')]
+    );
+  } else {
+    // Public can only see approved solutions
+    return await databases.listDocuments(
+      DATABASE_ID,
+      COLLECTIONS.SOLUTIONS,
+      [
+        Query.equal('status', 'approved'),
+        Query.orderDesc('createdAt')
+      ]
+    );
+  }
 };
 
 export const deleteSolution = async (id) => {
@@ -120,6 +167,24 @@ export const updateSolution = async (id, data) => {
     COLLECTIONS.SOLUTIONS,
     id,
     data
+  );
+};
+
+export const approveSolution = async (id) => {
+  return await databases.updateDocument(
+    DATABASE_ID,
+    COLLECTIONS.SOLUTIONS,
+    id,
+    { status: 'approved' }
+  );
+};
+
+export const rejectSolution = async (id) => {
+  return await databases.updateDocument(
+    DATABASE_ID,
+    COLLECTIONS.SOLUTIONS,
+    id,
+    { status: 'rejected' }
   );
 };
 
@@ -150,6 +215,15 @@ export const deleteProblem = async (id) => {
     DATABASE_ID,
     COLLECTIONS.PROBLEMS,
     id
+  );
+};
+
+export const updateProblem = async (id, data) => {
+  return await databases.updateDocument(
+    DATABASE_ID,
+    COLLECTIONS.PROBLEMS,
+    id,
+    data
   );
 };
 
@@ -237,6 +311,14 @@ export const getComments = async (postId) => {
       Query.equal('postId', postId),
       Query.orderDesc('createdAt')
     ]
+  );
+};
+
+export const deleteComment = async (id) => {
+  return await databases.deleteDocument(
+    DATABASE_ID,
+    COLLECTIONS.COMMENTS,
+    id
   );
 };
 
@@ -353,5 +435,71 @@ export const updateIdea = async (id, data) => {
     COLLECTIONS.IDEAS,
     id,
     data
+  );
+};
+
+// Courses
+export const createCourse = async (data) => {
+  return await databases.createDocument(
+    DATABASE_ID,
+    COLLECTIONS.COURSES || 'courses',
+    ID.unique(),
+    {
+      ...data,
+      students: 0,
+      createdAt: new Date().toISOString(),
+      status: 'draft'
+    }
+  );
+};
+
+export const getCourses = async () => {
+  return await databases.listDocuments(
+    DATABASE_ID,
+    COLLECTIONS.COURSES || 'courses',
+    [Query.orderDesc('createdAt')]
+  );
+};
+
+export const getCourse = async (id) => {
+  return await databases.getDocument(
+    DATABASE_ID,
+    COLLECTIONS.COURSES || 'courses',
+    id
+  );
+};
+
+export const updateCourse = async (id, data) => {
+  return await databases.updateDocument(
+    DATABASE_ID,
+    COLLECTIONS.COURSES || 'courses',
+    id,
+    data
+  );
+};
+
+export const deleteCourse = async (id) => {
+  return await databases.deleteDocument(
+    DATABASE_ID,
+    COLLECTIONS.COURSES || 'courses',
+    id
+  );
+};
+
+export const publishCourse = async (id) => {
+  return await databases.updateDocument(
+    DATABASE_ID,
+    COLLECTIONS.COURSES || 'courses',
+    id,
+    { status: 'published' }
+  );
+};
+
+export const unpublishCourse = async (id) => {
+  return await databases.updateDocument(
+    DATABASE_ID,
+    COLLECTIONS.COURSES || 'courses',
+    id,
+    { status: 'draft' }
   );
 };

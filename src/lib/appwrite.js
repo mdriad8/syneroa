@@ -25,7 +25,8 @@ export const COLLECTIONS = {
   PROGRAMS: '685571f2000ac9ae3b4b',
   CONTACT_MESSAGES: '685998e2001e54d1c99a',
   CAPSTONE_PROJECTS: '685a12e7001c6bfc1f35',
-  IDEAS: '685a1853003068f88f92'
+  IDEAS: '685a1853003068f88f92',
+  COURSES: 'courses' // Add this collection ID when created
 };
 
 export { Query };
