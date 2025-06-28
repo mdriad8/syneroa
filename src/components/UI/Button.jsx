@@ -8,6 +8,7 @@ const Button = ({
   loading = false,
   className = "",
   disabled,
+  asChild = false,
   ...props
 }) => {
   const baseClasses =
@@ -32,22 +33,37 @@ const Button = ({
 
   const classes = `${baseClasses} ${variants[variant]} ${sizes[size]} ${className}`;
 
+  const motionProps = {
+    whileHover: { scale: disabled || loading ? 1 : 1.02 },
+    whileTap: { scale: disabled || loading ? 1 : 0.98 },
+  };
+
+  const buttonContent = loading ? (
+    <div className="flex items-center space-x-2">
+      <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+      <span>Loading...</span>
+    </div>
+  ) : (
+    children
+  );
+
+  if (asChild && React.isValidElement(children)) {
+    return React.cloneElement(children, {
+      className: `${classes} ${children.props.className || ''}`,
+      disabled: disabled || loading,
+      ...motionProps,
+      ...props,
+    });
+  }
+
   return (
     <motion.button
-      whileHover={{ scale: disabled || loading ? 1 : 1.02 }}
-      whileTap={{ scale: disabled || loading ? 1 : 0.98 }}
+      {...motionProps}
       className={classes}
       disabled={disabled || loading}
       {...props}
     >
-      {loading ? (
-        <div className="flex items-center space-x-2">
-          <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-          <span>Loading...</span>
-        </div>
-      ) : (
-        children
-      )}
+      {buttonContent}
     </motion.button>
   );
 };
