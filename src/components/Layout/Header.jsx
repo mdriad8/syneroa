@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, User, LogOut } from "lucide-react";
+import { Menu, X, User, LogOut, BookOpen, Trophy } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -13,6 +13,7 @@ const Header = () => {
   const navigation = [
     { name: "Home", href: "/" },
     { name: "About", href: "/about" },
+    { name: "Courses", href: "/courses" },
     { name: "Platform", href: "/platform" },
     { name: "LaunchPad", href: "/launchpad" },
     { name: "Blog", href: "/blog" },
@@ -79,6 +80,22 @@ const Header = () => {
                       exit={{ opacity: 0, y: -10 }}
                       className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2"
                     >
+                      <Link
+                        to="/dashboard"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center space-x-2"
+                        onClick={() => setIsUserMenuOpen(false)}
+                      >
+                        <BookOpen className="h-4 w-4" />
+                        <span>Dashboard</span>
+                      </Link>
+                      <Link
+                        to="/courses"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center space-x-2"
+                        onClick={() => setIsUserMenuOpen(false)}
+                      >
+                        <Trophy className="h-4 w-4" />
+                        <span>My Courses</span>
+                      </Link>
                       {isAdmin && (
                         <Link
                           to="/admin"
@@ -88,6 +105,7 @@ const Header = () => {
                           Admin Panel
                         </Link>
                       )}
+                      <hr className="my-2" />
                       <button
                         onClick={handleLogout}
                         className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center space-x-2"
@@ -100,12 +118,20 @@ const Header = () => {
                 </AnimatePresence>
               </div>
             ) : (
-              <Link
-                to="/login"
-                className="bg-teal-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-teal-700 transition-colors"
-              >
-                Login
-              </Link>
+              <div className="flex items-center space-x-3">
+                <Link
+                  to="/login"
+                  className="text-gray-700 hover:text-teal-600 text-sm font-medium transition-colors"
+                >
+                  Login
+                </Link>
+                <Link
+                  to="/register"
+                  className="bg-teal-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-teal-700 transition-colors"
+                >
+                  Get Started
+                </Link>
+              </div>
             )}
           </div>
 
@@ -153,6 +179,20 @@ const Header = () => {
                       {user.name || user.email}
                     </span>
                   </div>
+                  <Link
+                    to="/dashboard"
+                    className="block text-base font-medium text-gray-700 mb-2"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Dashboard
+                  </Link>
+                  <Link
+                    to="/courses"
+                    className="block text-base font-medium text-gray-700 mb-2"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    My Courses
+                  </Link>
                   {isAdmin && (
                     <Link
                       to="/admin"
@@ -174,13 +214,22 @@ const Header = () => {
                   </button>
                 </div>
               ) : (
-                <Link
-                  to="/login"
-                  className="block bg-teal-600 text-white px-4 py-2 rounded-lg text-center font-medium"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Login
-                </Link>
+                <div className="pt-3 border-t border-gray-200 space-y-2">
+                  <Link
+                    to="/login"
+                    className="block text-center bg-gray-100 text-gray-700 px-4 py-2 rounded-lg font-medium"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Login
+                  </Link>
+                  <Link
+                    to="/register"
+                    className="block text-center bg-teal-600 text-white px-4 py-2 rounded-lg font-medium"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Get Started
+                  </Link>
+                </div>
               )}
             </div>
           </motion.div>

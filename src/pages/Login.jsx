@@ -22,7 +22,13 @@ const Login = () => {
     try {
       await login(email, password);
       toast.success("Welcome back!");
-      navigate("/admin");
+      
+      // Check if admin
+      if (email === "admin@syneroa.com") {
+        navigate("/admin");
+      } else {
+        navigate("/dashboard");
+      }
     } catch (error) {
       toast.error(error.message || "Login failed");
     } finally {
@@ -47,9 +53,9 @@ const Login = () => {
             <span className="text-2xl font-bold text-slate-900">Syneroa</span>
           </Link>
           <h2 className="text-3xl font-bold text-slate-900 mb-2">
-            Admin Login
+            Welcome Back
           </h2>
-          <p className="text-gray-600">Sign in to access the admin dashboard</p>
+          <p className="text-gray-600">Sign in to continue your learning journey</p>
         </div>
 
         <Card className="p-8">
@@ -65,7 +71,7 @@ const Login = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-                  placeholder="Enter your admin email"
+                  placeholder="Enter your email"
                   required
                 />
               </div>
@@ -113,9 +119,31 @@ const Login = () => {
             </div>
 
             <Button type="submit" className="w-full" loading={loading}>
-              Sign In to Admin Panel
+              Sign In
             </Button>
           </form>
+
+          <div className="mt-6">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-gray-500">
+                  New to Syneroa?
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-6 text-center">
+              <Link
+                to="/register"
+                className="w-full inline-flex justify-center py-3 px-4 border border-teal-600 rounded-lg text-sm font-medium text-teal-600 hover:bg-teal-50 transition-colors"
+              >
+                Create Account
+              </Link>
+            </div>
+          </div>
 
           <div className="mt-6 text-center">
             <Link
