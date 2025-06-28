@@ -1,23 +1,62 @@
-import React from 'react';
-import Hero from './components/HeroSection'; 
-import './index.css';
-import TimeLine from './components/TimeLineSection';
-import MenuNavigation from './components/MenuSection';
-import Projects from './components/ProjectsSection';
-import Skills from './components/SkillSection';
-import Contact from './components/ContactSection';
-import Footer from './components/FooterSection';
+import React from "react";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
+import { AuthProvider } from "./contexts/AuthContext";
+import Header from "./components/Layout/Header";
+import Footer from "./components/Layout/Footer";
+import ProtectedRoute from "./components/ProtectedRoute";
+
+// Pages
+import Home from "./pages/Home";
+import About from "./pages/About";
+import Platform from "./pages/Platform";
+import LaunchPad from "./pages/LaunchPad";
+import Blog from "./pages/Blog";
+import BlogPost from "./pages/BlogPost";
+import Contact from "./pages/Contact";
+import Login from "./pages/Login";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+
 function App() {
   return (
-    <div>
-      <MenuNavigation />
-    <Hero />
-    <TimeLine />
-    <Projects/>
-    <Skills/>
-    <Contact/>
-    <Footer/>
-  </div>
+    <AuthProvider>
+      <Router>
+        <div className="min-h-screen bg-white">
+          <Header />
+          <main>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/platform" element={<Platform />} />
+              <Route path="/launchpad" element={<LaunchPad />} />
+              <Route path="/blog" element={<Blog />} />
+              <Route path="/blog/:id" element={<BlogPost />} />
+              <Route path="/contact" element={<Contact />} />
+              <Route path="/login" element={<Login />} />
+              <Route
+                path="/admin"
+                element={
+                  <ProtectedRoute adminOnly>
+                    <AdminDashboard />
+                  </ProtectedRoute>
+                }
+              />
+            </Routes>
+          </main>
+          <Footer />
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              duration: 4000,
+              style: {
+                background: "#363636",
+                color: "#fff",
+              },
+            }}
+          />
+        </div>
+      </Router>
+    </AuthProvider>
   );
 }
 
